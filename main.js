@@ -13,20 +13,50 @@ program.option('-o, --output <path>', 'файл для запису відпов
 
 program.parse();
 const options = program.opts();
+
+function sendJson(res, status, body) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(body));
+}
 // колбек (err)=>{} викликає node.js, віддали функцію в fs.access("Коли перевіриш, викличи це"); файл є -> err є null файл знайдено, файлу немає -> є помилка, process.exit(1)
-fs.access(options.input ,(err) => { //викликаємо функцію fs.access і передаємо два аргументи(шлях до файлу options.input i функцію колбек(буде викликана коли перевіриться файл))
-  if (err) {
-    console.error('Cannot find input file');
-    process.exit(1);
-  }
+fs.access(options.input, (err) => { //викликаємо функцію fs.access і передаємо два аргументи(шлях до файлу options.input i функцію колбек(буде викликана коли перевіриться файл))
+    if (err) {
+        console.error('Cannot find input file');
+        process.exit(1);
+    }
 
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8'});
-    res.end('Сервер працює');
-  });
+    const server = http.createServer((req, res) => {
 
-  server.listen(Number(options.port), options.host, () => {
-    console.log(`Сервер: http://${options.host}:${options.port}`);
-  });
+        const url = new URL(req.url, 'http://localhost');
+
+        if (url.pathname !== '/') {
+            sendJson(res, 404, { error: 'Маршрут не знайдено' });
+            return;
+        }
+
+
+        fs.readFile(options.input, 'utf8', (err, text) => {
+            if (err) {
+                sendJson(res, 500, { error: 'Помилка читання файлу' });
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                sendJson(res, 500, { error: 'Помилка розбору даних' });
+                return;
+            }
+
+            sendJson(res, 200, { count: data.length });
+
+        });
+
+    });
+
+
+    server.listen(Number(options.port), options.host, () => {
+        console.log(`Сервер: http://${options.host}:${options.port}`);
+    });
 });
-  
