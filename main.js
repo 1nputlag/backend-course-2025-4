@@ -14,9 +14,27 @@ program.option('-o, --output <path>', 'файл для запису відпов
 program.parse();
 const options = program.opts();
 
-function sendJson(res, status, body) {
+function sendResponse(res, status, text) {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(body));
+    res.end(text);
+}
+
+function sendJson(res, status, body) {
+    const text = JSON.stringify(body);
+
+    if (!options.output) {
+        sendResponse(res, status, text);
+        return;
+    }
+
+    fs.writeFile(options.output, text, (err) => {
+        if (err) {
+            sendResponse(res, 500, JSON.stringify({ error: 'Помилка запису у файл' }));
+            return;
+        }
+
+        sendResponse(res, status, text);
+    });
 }
 // колбек (err)=>{} викликає node.js, віддали функцію в fs.access("Коли перевіриш, викличи це"); файл є -> err є null файл знайдено, файлу немає -> є помилка, process.exit(1)
 fs.access(options.input, (err) => { //викликаємо функцію fs.access і передаємо два аргументи(шлях до файлу options.input i функцію колбек(буде викликана коли перевіриться файл))
