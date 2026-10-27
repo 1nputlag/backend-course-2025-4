@@ -45,7 +45,13 @@ fs.access(options.input, (err) => { //викликаємо функцію fs.acc
 
     const server = http.createServer((req, res) => {
 
-        const url = new URL(req.url, 'http://localhost');
+        let url;
+        try {
+            url = new URL('http://localhost' + req.url);
+        } catch (e) {
+            sendJson(res, 400, { error: 'Некоректний запит' });
+            return;
+        }
 
         if (url.pathname !== '/') {
             sendJson(res, 404, { error: 'Маршрут не знайдено' });
