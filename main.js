@@ -34,6 +34,29 @@ fs.access(options.input, (err) => { //викликаємо функцію fs.acc
             return;
         }
 
+        const showMfo = url.searchParams.get('mfo') === 'true';
+        const onlyNormal = url.searchParams.get('normal') === 'true';
+
+        function toNumber(value) {
+            if (typeof value === 'number') {
+                return Number.isFinite(value) ? value : null;
+            }
+
+            if (typeof value === 'string' && value.trim() !== '') {
+                const n = Number(value);
+                return Number.isFinite(n) ? n : null;
+            }
+
+            return null;
+        }
+
+        function toText(value) {
+            if (typeof value === 'string' && value.trim() !== '') {
+                return value;
+            }
+
+            return null;
+        }
 
         fs.readFile(options.input, 'utf8', (err, text) => {
             if (err) {
@@ -49,7 +72,34 @@ fs.access(options.input, (err) => { //викликаємо функцію fs.acc
                 return;
             }
 
-            sendJson(res, 200, { count: data.length });
+            if (!Array.isArray(data)) {
+                sendJson(res, 500, { error: 'Дані мають неочікуваний формат' });
+                return;
+            }
+
+            let result;
+            try {
+                let records = data;
+
+                if (onlyNormal) {
+                    records = records.filter((record) => toNumber(record?.COD_STATE) === 1);
+                }
+
+                result = records.map((record) => {
+                    const item = {};
+                    if (showMfo) {
+                        item.mfo_code = toNumber(record?.MFO);
+                    }
+                    item.name = toText(record?.SHORTNAME);
+                    item.state_code = toNumber(record?.COD_STATE);
+                    return item;
+                });
+            } catch (e) {
+                sendJson(res, 500, { error: 'Помилка обробки даних' });
+                return;
+            }
+
+            sendJson(res, 200, result);
 
         });
 
